@@ -10,11 +10,10 @@ import (
 
 	"github.com/KoksalBerkay/bookings/pkg/config"
 	"github.com/KoksalBerkay/bookings/pkg/models"
+	"github.com/justinas/nosurf"
 )
 
-var functions = template.FuncMap{
-
-}
+var functions = template.FuncMap{}
 
 var app *config.AppConfig
 
@@ -22,12 +21,13 @@ var app *config.AppConfig
 func NewTemplates(a *config.AppConfig) {
 	app = a
 }
-func AddDefaultData(td *models.TemplateData) *models.TemplateData {
-
+func AddDefaultData(td *models.TemplateData, r *http.Request) *models.TemplateData {
+	td.CSRFToken = nosurf.Token(r)
 	return td
 }
+
 // RenderTemplate renders template using html/template
-func RenderTemplate(w http.ResponseWriter, tmpl string, td *models.TemplateData) {
+func RenderTemplate(w http.ResponseWriter, r *http.Request, tmpl string, td *models.TemplateData) {
 	var tc map[string]*template.Template
 
 	if app.UseCache {
@@ -44,7 +44,7 @@ func RenderTemplate(w http.ResponseWriter, tmpl string, td *models.TemplateData)
 
 	buf := new(bytes.Buffer)
 
-	td = AddDefaultData(td)
+	td = AddDefaultData(td, r)
 
 	_ = t.Execute(buf, td)
 
@@ -64,7 +64,7 @@ func CreateTemplateCache() (map[string]*template.Template, error) {
 		return myCache, err
 	}
 
-	for _, page := range pages { 
+	for _, page := range pages {
 		name := filepath.Base(page)
 		ts, err := template.New(name).Funcs(functions).ParseFiles(page)
 		if err != nil {
@@ -76,7 +76,7 @@ func CreateTemplateCache() (map[string]*template.Template, error) {
 			return myCache, err
 		}
 
-		if len(matches) > 0 { 
+		if len(matches) > 0 {
 			ts, err = ts.ParseGlob("./templates/*.layout.html")
 			if err != nil {
 				return myCache, err
